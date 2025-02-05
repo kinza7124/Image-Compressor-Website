@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Image Compressor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transition: background 0.5s, color 0.5s;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            max-width: 600px;
+        }
+        input, button, select {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        button {
+            background: #ff6b6b;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .drop-area {
+            border: 2px dashed white;
+            padding: 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .image-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        img {
+            max-width: 45%;
+            height: auto;
+            border-radius: 10px;
+        }
+        .dark-mode {
+            background: linear-gradient(135deg, #222, #444);
+            color: #ddd;
+        }
+        .dark-mode .container {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .dark-mode button {
+            background: #ffcc00;
+            color: black;
+        }
+        .toggle-dark-mode {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            cursor: pointer;
+            background: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-dark-mode" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    <div class="container">
+        <h2>🔥 Advanced Image Compressor 🔥</h2>
+        <div class="drop-area" id="dropArea">Drag & Drop Images Here</div>
+        <input type="file" id="imageInput" accept="image/*" multiple>
+        <br>
+        <label for="quality">Compression Level:</label>
+        <select id="quality">
+            <option value="0.9">Low (High Quality)</option>
+            <option value="0.7" selected>Medium</option>
+            <option value="0.4">High (More Compression)</option>
+        </select>
+        <br>
+        <button id="compressBtn" onclick="compressImages()">Compress</button>
+        <button id="downloadZipBtn" onclick="downloadZip()" disabled>Download as ZIP</button>
+        <br>
+        <div class="image-preview" id="previewContainer"></div>
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <script>
+        let compressedBlobs = [];
+        const dropArea = document.getElementById('dropArea');
+        dropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropArea.classList.add('highlight');
+        });
+        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('highlight'));
+        dropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropArea.classList.remove('highlight');
+            handleFiles(event.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            document.getElementById('imageInput').files = files;
+        }
+
+        function compressImages() {
+            const input = document.getElementById('imageInput');
+            const quality = parseFloat(document.getElementById('quality').value);
+            const files = input.files;
+            if (files.length === 0) {
+                alert('Please select images.');
+                return;
+            }
+            compressedBlobs = [];
+            document.getElementById('previewContainer').innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const canvas = document.getElementById('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width / 2;
+                        canvas.height = img.height / 2;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        canvas.toBlob(blob => {
+                            compressedBlobs.push({ blob, name: file.name });
+                            const url = URL.createObjectURL(blob);
+                            const previewImg = document.createElement('img');
+                            previewImg.src = url;
+                            document.getElementById('previewContainer').appendChild(previewImg);
+                            document.getElementById('downloadZipBtn').disabled = false;
+                        }, 'image/jpeg', quality);
+                    };
+                };
+            });
+        }
+
+        function downloadZip() {
+            if (compressedBlobs.length === 0) return;
+            let zip = new JSZip();
+            compressedBlobs.forEach((item, index) => {
+                zip.file(`compressed_${index + 1}.jpg`, item.blob);
+            });
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'compressed_images.zip';
+                a.click();
+            });
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
+</body>
+</html>
